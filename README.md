@@ -21,7 +21,7 @@ Full terms: [LICENSE](./LICENSE) · [IDENTITY.md](./IDENTITY.md) · [CONTRIBUTIN
 
 ## What Is PRISM?
 
-PRISM is a private, fully local, multi-agent AI system built to run on self-hosted hardware inside a single home. Not a product. Not a platform. Every model runs locally. Every piece of data stays on the home network. Privacy is architectural.
+PRISM is a private, fully local, multi-agent AI system built to run on self-hosted hardware inside a single home. It is not a product to be launched and not a platform to be used. Every model runs locally. Every piece of data stays on the home network. Privacy is architectural.
 
 Six specialist agents handle distinct domains. One orchestrator — **Calista** — is the sole interface to the owner. All other agents are infrastructure.
 
@@ -35,7 +35,6 @@ Six specialist agents handle distinct domains. One orchestrator — **Calista** 
 | **Privacy is architectural** | No email content, camera footage, or conversation data leaves the network. |
 | **Clean domain separation** | Each agent owns one domain. No overlap, no exceptions. |
 | **Approval-gated actions** | Sending messages, pushing code, running automation — all require explicit owner approval. |
-| **Simulation before build** | Minimum 30-scenario flaw simulation before any production code is written. |
 | **One writer, one database** | Calista is the sole write authority on the central memory bank. Every exception is documented. |
 
 ---
@@ -116,100 +115,6 @@ Manages the owner's personal Gmail account only. Classifies every incoming messa
 **Hardware:** Mac Mini M4 — 16GB unified memory, 512GB SSD. Always on.
 
 **Models:** qwen3:4b Q4_K_M (triage, always resident) + qwen3:8b Q5_K_M (drafting, on demand).
-
----
-
-## How It Works
-
-### Communication — MQTT
-
-All inter-agent communication routes through a single Mosquitto MQTT broker on Maia's NAS. Topic ACLs enforced at broker level — each agent publishes only to its own topics and subscribes only to what it needs.
-
-```
-Owner
-  ↓ voice / Telegram / Discord
-Calista (Mac Studio)
-  ↓ MQTT
-  ├── Iris    → research
-  ├── Sasha   → security alerts
-  ├── Tessa   → development
-  └── Cleo    → email
-
-Maia (NAS)
-  ├── MQTT broker (Mosquitto)
-  ├── Heartbeat aggregation
-  ├── Thermal monitoring (SSH)
-  ├── NAS storage
-  └── LoRA orchestration
-```
-
-### Memory
-
-| Store | Writer | Contents |
-|---|---|---|
-| `calista.db` — SQLite, Mac Studio | Calista only. Sasha: `irl_people` face data only. | All programmatically queried data — memory, journal, contacts, schedules. |
-| Obsidian Vault — Mac Studio | Calista | Narrative/lore/personality content. Read as context. Never queried programmatically. |
-| Iris Vault — NAS | Iris (write), Tessa (read-only) | Research notes, auto-refreshed trend notes. |
-| Agent Vaults — NAS | Per-agent, own vault only | Tessa: project archives. Cleo: email logs. |
-
-**Rule: programmatically queried + frequently written → SQLite. Narrative context + rarely written → Obsidian vault.**
-
-### FastAPI Layer
-
-Calista exposes a versioned FastAPI layer for all external integrations.
-
-| Endpoint | Purpose |
-|---|---|
-| `POST /v1/message` | Text input → text response |
-| `POST /v1/voice` | Audio input → audio response |
-| `GET /v1/state` | Emotion state, agent statuses, thermals |
-| `POST /v1/command` | Trigger a named action |
-| `GET /v1/stream` | SSE stream of real-time output events |
-| `WS /v1/live` | WebSocket for VTuber avatar bridge |
-| `POST /v1/context` | Inject context into conversation window |
-| `POST /v1/file` | Send document/image for VLM processing |
-| `GET /v1/agents` | All agent statuses via Maia heartbeat data |
-| `GET /v1/dashboard` | Room terminal kiosk dashboard |
-
-Reachable from any authorised device via Tailscale.
-
----
-
-## Hardware
-
-| Node | Machine | Memory | Storage | Always-On |
-|---|---|---|---|---|
-| Calista | Mac Studio M4 Max | 64GB unified | 1TB NVMe | ✅ |
-| Iris | Mac Mini M4 Pro | 48GB unified | 512GB NVMe | ❌ |
-| Sasha | Mac Mini M4 | 16GB unified | 512GB NVMe | ✅ |
-| Tessa | Mac Mini M4 Pro | 48GB unified | 512GB NVMe | ❌ |
-| Cleo | Mac Mini M4 | 16GB unified | 512GB NVMe | ✅ |
-| Maia (NAS) | Intel N100 mini-ITX | 16GB DDR4 | 256GB NVMe + 4TB IronWolf | ✅ |
-
-All nodes on wired Ethernet. No WiFi. Inter-node communication via Tailscale.
-
-**Physical hardware (Calista's domain):** Room terminal (10–13" wall-mounted touchscreen, wide-FOV camera, mic), desk camera, ceiling-mounted robotic arm (Pi 5 + AI HAT, serial bus servos, parallel jaw gripper, COB LED), shoulder-mounted robot (LCD, camera, speaker, mic — active when owner is out), TP-Link Kasa + Govee smart home, room mic array + dual-zone speakers, UPS.
-
----
-
-## Tech Stack
-
-| Category | Technologies |
-|---|---|
-| **Inference** | Ollama, CoreML |
-| **LLMs** | qwen3:8b, qwen3:32b, qwen3:4b, qwen2.5-vl:7b, llava:7b, Qwen3 32B, Qwen2.5-Coder 32B |
-| **Real-time CV** | YOLO v8 nano (CoreML), MediaPipe Holistic, face_recognition/dlib, OpenCV |
-| **Voice** | openWakeWord, faster-whisper, Kokoro-82M, VITS2 + RVC |
-| **Inter-agent** | Mosquitto MQTT, paho-mqtt |
-| **Memory** | SQLite (WAL mode), Obsidian vaults |
-| **Integrations** | Google Workspace API, Gmail API, Spotify API, Notion API, GitHub API |
-| **Networking** | Tailscale, RTSP, ONVIF |
-| **Infrastructure** | OpenMediaVault, Docker, launchd, NUT (UPS) |
-| **API layer** | FastAPI, SSE, WebSocket |
-| **Coding agent** | Aider, pyautogui, rapidfuzz |
-| **VTuber** | VTube Studio WebSocket API, Live2D |
-| **Smart home** | python-kasa, govee-api-laggat |
-| **Robotics** | Feetech STS servos, MOSFET PWM, INA219, Raspberry Pi 5 + Hailo-8L / Google Coral |
 
 ---
 
